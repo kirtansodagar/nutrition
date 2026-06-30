@@ -1,0 +1,153 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Sex {
+  MALE
+  FEMALE
+}
+
+enum ActivityLevel {
+  SEDENTARY
+  LIGHTLY_ACTIVE
+  ACTIVE
+  VERY_ACTIVE
+}
+
+enum GoalType {
+  LOSE_WEIGHT
+  MAINTAIN
+  GAIN_MUSCLE
+}
+
+enum DietaryPreference {
+  VEGETARIAN
+  VEGAN
+  EGGETARIAN
+  NON_VEGETARIAN
+}
+
+model User {
+  id           String        @id @default(cuid())
+  clerkId      String        @unique
+  email        String?       @unique
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  profile      UserProfile?
+  dailyTargets DailyTarget[]
+  meals        Meal[]
+}
+
+model UserProfile {
+  id                String             @id @default(cuid())
+  userId            String             @unique
+  sex               Sex
+  age               Int
+  heightCm          Decimal            @db.Decimal(5, 2)
+  currentWeightKg   Decimal            @db.Decimal(5, 2)
+  targetWeightKg    Decimal?           @db.Decimal(5, 2)
+  activityLevel     ActivityLevel
+  goalType          GoalType
+  goalRateKgPerWeek Decimal            @db.Decimal(4, 2)
+  dietaryPreference DietaryPreference
+  allergies         String[]
+  allergyNotes      String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model DailyTarget {
+  id        String   @id @default(cuid())
+  userId    String
+  date      DateTime @default(now())
+  calories  Int
+  proteinG  Int
+  carbsG    Int
+  fatG      Int
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date])
+}
+
+model Food {
+  id            String   @id @default(cuid())
+  name          String
+  category      String
+  ifctCode      String?
+  fdcId         Int?
+  source        String   @default("ifct")
+
+  caloriesPer100g    Int
+  proteinPer100g     Float
+  carbsPer100g       Float
+  fatPer100g         Float
+  fiberPer100g       Float?
+
+  ironPer100g        Float?
+  calciumPer100g     Float?
+
+  commonPortions     Json?
+  tags               String[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  mealItems     MealItem[]
+
+  @@index([name])
+  @@index([category])
+}
+
+model Meal {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  date          DateTime @default(now())
+  timeOfDay     String
+
+  photoUrl      String?
+
+  totalCalories    Int      @default(0)
+  totalProteinG    Float    @default(0)
+  totalCarbsG      Float    @default(0)
+  totalFatG        Float    @default(0)
+
+  aiModelUsed      String?
+  aiRawResponse    Json?
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  items         MealItem[]
+
+  @@index([userId, date])
+  @@index([userId, timeOfDay])
+}
+
+model MealItem {
+  id            String   @id @default(cuid())
+  mealId        String
+  meal          Meal     @relation(fields: [mealId], references: [id], onDelete: Cascade)
+
+  foodId        String?
+  food          Food?    @relation(fields: [foodId], references: [id], onDelete: SetNull)
+
+  foodName      String
+  portionGrams  Float
+  estimatedBy   String   @default("ai")
+
+  calories      Int
+  proteinG      Float
+  carbsG        Float
+  fatG          Float
+
+  createdAt     DateTime @default(now())
+}
