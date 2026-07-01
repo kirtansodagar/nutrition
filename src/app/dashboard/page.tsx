@@ -78,6 +78,30 @@ export default async function DashboardPage() {
               <Metric label="Remaining" value={remaining} unit="kcal" />
               <Metric label="Target" value={target.calories} unit="kcal" />
             </div>
+
+            {/* Calorie progress bar */}
+            <div className="mt-4">
+              <div className="mb-1.5 flex items-center justify-between text-xs text-muted">
+                <span>Daily progress</span>
+                <span>{Math.min(Math.round((consumed.calories / target.calories) * 100), 100)}%</span>
+              </div>
+              <div className="h-4 overflow-hidden rounded-full bg-gray-100">
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ${
+                    consumed.calories > target.calories
+                      ? "bg-red-500"
+                      : consumed.calories > target.calories * 0.9
+                        ? "bg-amber-500"
+                        : "bg-primary"
+                  }`}
+                  style={{ width: `${Math.min((consumed.calories / target.calories) * 100, 100)}%` }}
+                />
+              </div>
+              <div className="mt-1 flex justify-between text-[10px] text-muted">
+                <span>0</span>
+                <span>{target.calories.toLocaleString("en-IN")} kcal</span>
+              </div>
+            </div>
           </div>
 
           <div className="rounded-lg border border-line bg-card p-5 shadow-sm sm:p-6">

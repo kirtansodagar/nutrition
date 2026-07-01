@@ -24,6 +24,8 @@ type FoodItem = {
   carbsG: number;
   fatG: number;
   foodId?: string;
+  source?: string;
+  feedback?: "correct" | "wrong" | null;
 };
 
 type TimeOfDay = "breakfast" | "lunch" | "dinner" | "snack";
@@ -116,6 +118,8 @@ export default function LogPage() {
             carbsG: (nutrition?.carbsG as number) || 0,
             fatG: (nutrition?.fatG as number) || 0,
             foodId: (nutrition?.foodId as string) || undefined,
+            source: (item.source as string) || "ai",
+            feedback: null,
           };
         }
       );
@@ -156,6 +160,14 @@ export default function LogPage() {
     setItems((prev) => prev.filter((item) => item.id !== id));
   }, []);
 
+  const setFeedback = useCallback((id: string, feedback: "correct" | "wrong") => {
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === id ? { ...item, feedback: item.feedback === feedback ? null : feedback } : item
+      )
+    );
+  }, []);
+
   const handleSave = useCallback(async () => {
     if (items.length === 0) return;
     setSaving(true);
@@ -176,6 +188,7 @@ export default function LogPage() {
             proteinG: item.proteinG,
             carbsG: item.carbsG,
             fatG: item.fatG,
+            feedback: item.feedback || undefined,
           })),
         }),
       });
@@ -368,7 +381,12 @@ export default function LogPage() {
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
-                          <p className="font-semibold truncate">{item.foodName}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="font-semibold truncate">{item.foodName}</p>
+                            {item.source === "local-db" && (
+                              <span className="shrink-0 rounded bg-green-100 px-1.5 py-0.5 text-[10px] font-semibold text-green-700">VERIFIED</span>
+                            )}
+                          </div>
                           <p className="mt-1 text-xs text-muted">
                             {item.calories} kcal | P: {item.proteinG}g | C:{" "}
                             {item.carbsG}g | F: {item.fatG}g
@@ -405,24 +423,89 @@ export default function LogPage() {
                         >
                           <Plus size={14} />
                         </button>
+                        <div className="ml-auto flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setFeedback(item.id, "correct")}
+                            className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-semibold transition ${
+                              item.feedback === "correct"
+                                ? "bg-green-100 text-green-700"
+                                : "bg-gray-100 text-gray-500 hover:bg-green-50"
+                            }`}
+                          >
+                            <Check size={12} />
+                            Correct
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setFeedback(item.id, "wrong")}
+                            className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-semibold transition ${
+                              item.feedback === "wrong"
+                                ? "bg-red-100 text-red-700"
+                                : "bg-gray-100 text-gray-500 hover:bg-red-50"
+                            }`}
+                          >
+                            <X size={12} />
+                            Wrong
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))}
                 </div>
 
-                {/* Macro summary */}
-                <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-                  <div className="rounded-md bg-[#f4efe6] p-3">
-                    <p className="text-xs text-muted">Protein</p>
-                    <p className="text-sm font-semibold">{totalProtein.toFixed(1)}g</p>
+                {/* Macro summary with visual bar */}
+                <div className="mt-4">
+                  <div className="mb-2 flex items-center justify-between text-xs text-muted">
+                    <span>Macros breakdown</span>
+                    <span>{totalCalories} kcal total</span>
                   </div>
-                  <div className="rounded-md bg-[#f4efe6] p-3">
-                    <p className="text-xs text-muted">Carbs</p>
-                    <p className="text-sm font-semibold">{totalCarbs.toFixed(1)}g</p>
+                  <div className="mb-3 flex h-3 overflow-hidden rounded-full bg-gray-100">
+                    {totalCalories > 0 && (
+                      <>
+                        <div
+                          className="bg-blue-500 transition-all"
+                          style={{ width: `${(totalProtein * 4 / totalCalories) * 100}%` }}
+                          title={`Protein: ${totalProtein}g`}
+                        />
+                        <div
+                          className="bg-amber-500 transition-all"
+                          style={{ width: `${(totalCarbs * 4 / totalCalories) * 100}%` }}
+                          title={`Carbs: ${totalCarbs}g`}
+                        />
+                        <div
+                          className="bg-red-500 transition-all"
+                          style={{ width: `${(totalFat * 9 / totalCalories) * 100}%` }}
+                          title={`Fat: ${totalFat}g`}
+                        />
+                      </>
+                    )}
                   </div>
-                  <div className="rounded-md bg-[#f4efe6] p-3">
-                    <p className="text-xs text-muted">Fat</p>
-                    <p className="text-sm font-semibold">{totalFat.toFixed(1)}g</p>
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div className="rounded-md bg-blue-50 p-3">
+                      <div className="mb-1 flex items-center justify-center gap-1">
+                        <span className="size-2 rounded-full bg-blue-500" />
+                        <p className="text-xs text-muted">Protein</p>
+                      </div>
+                      <p className="text-sm font-semibold text-blue-700">{totalProtein.toFixed(1)}g</p>
+                      <p className="text-[10px] text-muted">{totalCalories > 0 ? Math.round((totalProtein * 4 / totalCalories) * 100) : 0}%</p>
+                    </div>
+                    <div className="rounded-md bg-amber-50 p-3">
+                      <div className="mb-1 flex items-center justify-center gap-1">
+                        <span className="size-2 rounded-full bg-amber-500" />
+                        <p className="text-xs text-muted">Carbs</p>
+                      </div>
+                      <p className="text-sm font-semibold text-amber-700">{totalCarbs.toFixed(1)}g</p>
+                      <p className="text-[10px] text-muted">{totalCalories > 0 ? Math.round((totalCarbs * 4 / totalCalories) * 100) : 0}%</p>
+                    </div>
+                    <div className="rounded-md bg-red-50 p-3">
+                      <div className="mb-1 flex items-center justify-center gap-1">
+                        <span className="size-2 rounded-full bg-red-500" />
+                        <p className="text-xs text-muted">Fat</p>
+                      </div>
+                      <p className="text-sm font-semibold text-red-700">{totalFat.toFixed(1)}g</p>
+                      <p className="text-[10px] text-muted">{totalCalories > 0 ? Math.round((totalFat * 9 / totalCalories) * 100) : 0}%</p>
+                    </div>
                   </div>
                 </div>
 
